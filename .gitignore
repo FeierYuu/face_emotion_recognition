@@ -141,3 +141,5 @@ tmp/
 *.backup
 *.bak
 *.old
+/images/
+/video/
