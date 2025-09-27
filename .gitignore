@@ -107,13 +107,16 @@ data/
 *.csv
 *.json
 
-# Results
+# Results (但允许示例文件)
 results/
 output/
-*.jpg
-*.png
-*.mp4
-*.avi
+# 允许示例图像和视频文件
+!images/*.jpg
+!images/*.png
+!images/*.jpeg
+!video/*.mp4
+!video/*.avi
+!video/*.mov
 
 # IDE
 .vscode/
@@ -141,5 +144,7 @@ tmp/
 *.backup
 *.bak
 *.old
-/images/
-/video/
+
+# 允许示例文件夹（移除之前的排除规则）
+# /images/  # 已移除，允许上传
+# /video/   # 已移除，允许上传
