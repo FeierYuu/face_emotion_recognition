@@ -58,7 +58,7 @@ face_emotion_recognition/
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/yourusername/face_emotion_recognition.git
+   git clone https://github.com/FeierYuu/face_emotion_recognition.git
    cd face_emotion_recognition
    ```
 
@@ -76,7 +76,7 @@ face_emotion_recognition/
 4. **运行测试**
    ```bash
    # 测试图像识别
-   python unified_emotion_recognition.py --image images/90.jpg
+   python unified_emotion_recognition.py --image images/xxx.jpg
    
    # 启动实时摄像头识别
    python unified_emotion_recognition.py --camera
@@ -362,7 +362,7 @@ python combined_train.py --fer2013 datasSource/fer2013.csv --epochs 100 --batch_
 
 如有问题或建议，请通过以下方式联系：
 
-- 提交 [Issue](https://github.com/yourusername/face_emotion_recognition/issues)
+- 提交 [Issue](https://github.com/FeierYuu/   face_emotion_recognition/issues)
 - 发送邮件至：1965214761@qq.com.com
 
 ---
