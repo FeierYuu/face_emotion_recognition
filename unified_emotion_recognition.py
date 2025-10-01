@@ -15,7 +15,7 @@ from utils import FaceUtils
 class UnifiedEmotionRecognizer:
     """整合了基础和M1优化功能的统一情绪识别器"""
     def __init__(self, model_path='models/emotion_model.h5', use_m1_optimizations=False, 
-                 use_tflite=False, verbose=True):
+                 use_tflite=False, verbose=True, language='zh'):
         """
         初始化情绪识别器
         
@@ -24,22 +24,16 @@ class UnifiedEmotionRecognizer:
             use_m1_optimizations: 是否使用M1优化
             use_tflite: 是否使用TensorFlow Lite模型
             verbose: 是否显示详细信息
+            language: 显示语言 ('zh'=中文, 'en'=英文, 'ru'=俄语)
         """
         self.model_path = model_path
         self.use_m1_optimizations = use_m1_optimizations
         self.use_tflite = use_tflite
         self.verbose = verbose
+        self.language = language
         
-        # 情绪标签映射 (FER2013数据集标准顺序)
-        self.emotion_labels = {
-            0: '生气',
-            1: '厌恶',
-            2: '恐惧',
-            3: '开心',
-            4: '伤心',
-            5: '惊讶',
-            6: '中性'
-        }
+        # 多语言情绪标签映射
+        self.emotion_labels = self._get_emotion_labels(language)
         
         # 初始化组件
         self.model = None
@@ -55,6 +49,57 @@ class UnifiedEmotionRecognizer:
         
         # 加载模型
         self._load_model()
+    
+    def _get_emotion_labels(self, language):
+        """获取指定语言的情绪标签映射"""
+        emotion_mappings = {
+            'zh': {  # 中文
+                0: '生气',
+                1: '厌恶',
+                2: '恐惧',
+                3: '开心',
+                4: '伤心',
+                5: '惊讶',
+                6: '中性'
+            },
+            'en': {  # 英文
+                0: 'Angry',
+                1: 'Disgust',
+                2: 'Fear',
+                3: 'Happy',
+                4: 'Sad',
+                5: 'Surprise',
+                6: 'Neutral'
+            },
+            'ru': {  # 俄语
+                0: 'Злой',
+                1: 'Отвращение',
+                2: 'Страх',
+                3: 'Счастливый',
+                4: 'Грустный',
+                5: 'Удивленный',
+                6: 'Нейтральный'
+            }
+        }
+        
+        # 如果语言不支持，默认使用中文
+        if language not in emotion_mappings:
+            if self.verbose:
+                print(f"警告: 不支持的语言 '{language}'，使用默认中文")
+            language = 'zh'
+        
+        return emotion_mappings[language]
+    
+    def set_language(self, language):
+        """动态切换显示语言"""
+        if language in ['zh', 'en', 'ru']:
+            self.language = language
+            self.emotion_labels = self._get_emotion_labels(language)
+            if self.verbose:
+                print(f"语言已切换为: {language}")
+        else:
+            if self.verbose:
+                print(f"不支持的语言: {language}，支持的语言: zh, en, ru")
     
     def _configure_tensorflow(self):
         """配置TensorFlow以提高性能"""
@@ -571,6 +616,12 @@ def parse_args():
     
     parser.add_argument('--use-keras', action='store_true',
                       help='使用Keras模型而不是TFLite模型')
+    
+    # 语言选择参数
+    parser.add_argument('--language', type=str, default='zh', 
+                      choices=['zh', 'en', 'ru'],
+                      help='显示语言: zh=中文, en=英文, ru=俄语 (默认: zh)')
+    
     return parser.parse_args()
 
 def main():
@@ -598,7 +649,8 @@ def main():
         model_path=model_path,
         use_m1_optimizations=args.use_m1_optimizations,
         use_tflite=args.use_tflite,
-        verbose=args.verbose
+        verbose=args.verbose,
+        language=args.language
     )
     
     # 根据输入类型执行相应的识别功能

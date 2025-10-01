@@ -12,7 +12,7 @@
 - 🎯 **高精度识别**：基于FER2013数据集训练的深度学习模型
 - 🚀 **实时处理**：支持摄像头实时情绪识别
 - 📱 **多平台支持**：优化支持Apple M1/M2芯片
-- 🎨 **中文界面**：完整的中文标签和界面支持
+- 🌍 **多语言支持**：支持中文、英文、俄语三种语言显示
 - 🔧 **易于使用**：简单的命令行接口
 - 📊 **详细分析**：提供置信度和概率分布
 
@@ -135,6 +135,34 @@ python unified_emotion_recognition.py --skip_frames 2
 # 详细输出模式
 python unified_emotion_recognition.py --verbose
 ```
+
+### 🌍 多语言支持
+
+```bash
+# 中文显示（默认）
+python unified_emotion_recognition.py --image images/90.jpg --language zh
+
+# 英文显示
+python unified_emotion_recognition.py --image images/90.jpg --language en
+
+# 俄语显示
+python unified_emotion_recognition.py --image images/90.jpg --language ru
+
+# 实时摄像头识别（英文）
+python unified_emotion_recognition.py --camera --language en
+```
+
+#### 支持的语言映射
+
+| 情绪 | 中文 | English | Русский |
+|------|------|---------|---------|
+| 生气 | 生气 | Angry | Злой |
+| 厌恶 | 厌恶 | Disgust | Отвращение |
+| 恐惧 | 恐惧 | Fear | Страх |
+| 开心 | 开心 | Happy | Счастливый |
+| 伤心 | 伤心 | Sad | Грустный |
+| 惊讶 | 惊讶 | Surprise | Удивленный |
+| 中性 | 中性 | Neutral | Нейтральный |
 
 ### 调整识别精度
 
