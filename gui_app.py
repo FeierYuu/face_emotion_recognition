@@ -41,6 +41,7 @@ class EmotionGUI(ctk.CTk):
         self.recognizer = None
         self.is_running = False
         self.current_process: Popen | None = None
+        self.python_exec = self._resolve_python_exec()
 
         # 状态变量
         self.model_path_var = tk.StringVar(value=os.path.join(PROJECT_ROOT, "models", "final_emotion_model_optimized.tflite"))
@@ -55,9 +56,22 @@ class EmotionGUI(ctk.CTk):
         self.language_display_var = tk.StringVar(value="中文")
         self._language_name_to_code = {"中文": "zh", "English": "en", "Русский": "ru"}
 
+        # 训练相关状态
+        self.train_dataset_dir_var = tk.StringVar(value="")
+        self.train_fer_csv_var = tk.StringVar(value="")
+        self.train_epochs_var = tk.IntVar(value=20)
+        self.train_batch_var = tk.IntVar(value=32)
+        self.train_lr_var = tk.DoubleVar(value=0.0001)
+        self.train_augment_var = tk.StringVar(value="medium")
+        self.train_class_weight_var = tk.BooleanVar(value=True)
+        self.train_exp_name_var = tk.StringVar(value="")
+        self.train_save_dir_var = tk.StringVar(value=os.path.join(PROJECT_ROOT, "models"))
+
         self._build_layout()
         # 启动后将窗口置顶并聚焦
         self.after(100, self._bring_to_front)
+        # 显示当前将用于子进程的 Python 解释器
+        self.after(150, lambda: self._log(f"子进程将使用 Python: {self.python_exec}"))
 
     def _build_layout(self):
         # 左侧面板：操作&参数
@@ -147,6 +161,58 @@ class EmotionGUI(ctk.CTk):
         self.btn_video = ctk.CTkButton(actions, text="上传视频识别", command=self._handle_video)
         self.btn_video.pack(fill="x", pady=6)
 
+        # 训练模块
+        train_title = ctk.CTkLabel(sidebar, text="训练模型", font=("PingFang SC", 16, "bold"))
+        train_title.pack(padx=20, pady=(10, 6), anchor="w")
+
+        # 数据集选择
+        ds_frame = ctk.CTkFrame(sidebar)
+        ds_frame.pack(fill="x", padx=20, pady=(4, 4))
+        ds_row1 = ctk.CTkFrame(ds_frame)
+        ds_row1.pack(fill="x", pady=(4, 2))
+        ctk.CTkLabel(ds_row1, text="目录数据集").pack(side="left")
+        ctk.CTkButton(ds_row1, text="选择", width=70, command=self._choose_train_dataset_dir).pack(side="right")
+        ctk.CTkEntry(ds_frame, textvariable=self.train_dataset_dir_var, placeholder_text="包含子目录的图像数据集路径").pack(fill="x")
+
+        ds_row2 = ctk.CTkFrame(sidebar)
+        ds_row2.pack(fill="x", padx=20, pady=(6, 2))
+        ctk.CTkLabel(ds_row2, text="FER2013 CSV").pack(side="left")
+        ctk.CTkButton(ds_row2, text="选择", width=70, command=self._choose_train_fer_csv).pack(side="right")
+        ctk.CTkEntry(sidebar, textvariable=self.train_fer_csv_var, placeholder_text="datasSource/fer2013.csv").pack(fill="x", padx=20)
+
+        # 训练参数
+        hp_frame = ctk.CTkFrame(sidebar)
+        hp_frame.pack(fill="x", padx=20, pady=(8, 4))
+        row_hp1 = ctk.CTkFrame(hp_frame); row_hp1.pack(fill="x", pady=(4, 2))
+        ctk.CTkLabel(row_hp1, text="轮数").pack(side="left")
+        ctk.CTkEntry(row_hp1, width=80, textvariable=self.train_epochs_var).pack(side="left", padx=(6, 12))
+        ctk.CTkLabel(row_hp1, text="批次").pack(side="left")
+        ctk.CTkEntry(row_hp1, width=80, textvariable=self.train_batch_var).pack(side="left", padx=(6, 0))
+
+        row_hp2 = ctk.CTkFrame(hp_frame); row_hp2.pack(fill="x", pady=(2, 2))
+        ctk.CTkLabel(row_hp2, text="学习率").pack(side="left")
+        ctk.CTkEntry(row_hp2, width=120, textvariable=self.train_lr_var).pack(side="left", padx=(6, 12))
+        ctk.CTkLabel(row_hp2, text="增强").pack(side="left")
+        ctk.CTkOptionMenu(row_hp2, values=["none","low","medium","high","very_high"], variable=self.train_augment_var).pack(side="left", padx=(6,0))
+
+        cw_row = ctk.CTkFrame(hp_frame); cw_row.pack(fill="x", pady=(2, 2))
+        ctk.CTkSwitch(cw_row, text="类别权重平衡", variable=self.train_class_weight_var).pack(anchor="w")
+
+        # 保存设置
+        sv_frame = ctk.CTkFrame(sidebar)
+        sv_frame.pack(fill="x", padx=20, pady=(8, 6))
+        name_row = ctk.CTkFrame(sv_frame); name_row.pack(fill="x", pady=(2, 2))
+        ctk.CTkLabel(name_row, text="实验名").pack(side="left")
+        ctk.CTkEntry(name_row, textvariable=self.train_exp_name_var).pack(side="left", fill="x", expand=True, padx=(6,0))
+        dir_row = ctk.CTkFrame(sv_frame); dir_row.pack(fill="x", pady=(2, 2))
+        ctk.CTkLabel(dir_row, text="保存到").pack(side="left")
+        ctk.CTkButton(dir_row, text="选择", width=70, command=self._choose_train_save_dir).pack(side="right")
+        ctk.CTkEntry(sv_frame, textvariable=self.train_save_dir_var).pack(fill="x")
+
+        # 启动训练按钮
+        self.btn_train = ctk.CTkButton(sidebar, text="开始训练模型", command=self._handle_train)
+        self.btn_train.pack(fill="x", padx=20, pady=(6, 14))
+
         # 右侧：日志与说明
         main_area = ctk.CTkFrame(self)
         main_area.pack(side="left", fill="both", expand=True)
@@ -187,6 +253,21 @@ class EmotionGUI(ctk.CTk):
         except Exception:
             print(f"{title}: {message}")
 
+    def _resolve_python_exec(self) -> str:
+        # 优先使用当前虚拟环境
+        venv = os.environ.get("VIRTUAL_ENV")
+        if venv:
+            cand = os.path.join(venv, "bin", "python")
+            if os.path.exists(cand):
+                return cand
+        # 其次尝试项目内常见虚拟环境
+        for name in [".venv1", ".venv", "venv"]:
+            cand = os.path.join(PROJECT_ROOT, name, "bin", "python")
+            if os.path.exists(cand):
+                return cand
+        # 回退为当前进程解释器
+        return sys.executable
+
     def _bring_to_front(self):
         try:
             self.deiconify()
@@ -215,7 +296,7 @@ class EmotionGUI(ctk.CTk):
         except Exception:
             pass
 
-    def _run_subprocess(self, args: list[str], start_note: str, end_note: str, *, cwd: str | None = None):
+    def _run_subprocess(self, args: list[str], start_note: str, end_note: str, *, cwd: str | None = None, on_line=None):
         if self.is_running:
             self._log("已有任务在运行，请稍候…")
             return
@@ -225,7 +306,13 @@ class EmotionGUI(ctk.CTk):
             try:
                 assert proc.stdout is not None
                 for line in proc.stdout:
-                    self._log(line.rstrip())
+                    text = line.rstrip()
+                    self._log(text)
+                    if on_line:
+                        try:
+                            on_line(text)
+                        except Exception:
+                            pass
             finally:
                 code = proc.wait()
                 self._log(f"进程退出，返回码: {code}")
@@ -257,6 +344,21 @@ class EmotionGUI(ctk.CTk):
         if path:
             self.save_dir_var.set(path)
 
+    def _choose_train_dataset_dir(self):
+        path = filedialog.askdirectory(title="选择目录数据集", initialdir=PROJECT_ROOT)
+        if path:
+            self.train_dataset_dir_var.set(path)
+
+    def _choose_train_fer_csv(self):
+        path = filedialog.askopenfilename(title="选择 FER2013 CSV", initialdir=os.path.join(PROJECT_ROOT, "datasSource"), filetypes=[("CSV","*.csv"), ("所有文件","*.*")])
+        if path:
+            self.train_fer_csv_var.set(path)
+
+    def _choose_train_save_dir(self):
+        path = filedialog.askdirectory(title="选择模型保存目录", initialdir=os.path.join(PROJECT_ROOT, "models"))
+        if path:
+            self.train_save_dir_var.set(path)
+
     def _ensure_recognizer(self):
         if self.recognizer is not None:
             return
@@ -280,7 +382,7 @@ class EmotionGUI(ctk.CTk):
         script = os.path.join(PROJECT_ROOT, "unified_emotion_recognition.py")
         resolution = (int(self.res_w_var.get()), int(self.res_h_var.get()))
         args = [
-            sys.executable,
+            self.python_exec,
             script,
             "--camera",
             "--resolution", str(resolution[0]), str(resolution[1]),
@@ -311,7 +413,7 @@ class EmotionGUI(ctk.CTk):
             return
         script = os.path.join(PROJECT_ROOT, "unified_emotion_recognition.py")
         args = [
-            sys.executable,
+            self.python_exec,
             script,
             "--image", image_path,
             "--confidence", str(float(self.confidence_var.get())),
@@ -345,7 +447,7 @@ class EmotionGUI(ctk.CTk):
             return
         script = os.path.join(PROJECT_ROOT, "unified_emotion_recognition.py")
         args = [
-            sys.executable,
+            self.python_exec,
             script,
             "--video", video_path,
             "--confidence", str(float(self.confidence_var.get())),
@@ -362,6 +464,49 @@ class EmotionGUI(ctk.CTk):
             args.append("--use_tflite")
 
         self._run_subprocess(args, "正在进行视频识别… 在弹出的 OpenCV 窗口按 ESC 退出。", "视频识别完成。")
+
+    def _handle_train(self):
+        if self.is_running:
+            self._log("已有任务在运行，请稍候…")
+            return
+        script = os.path.join(PROJECT_ROOT, "combined_train.py")
+        args = [
+            self.python_exec,
+            script,
+            "--epochs", str(int(self.train_epochs_var.get())),
+            "--batch_size", str(int(self.train_batch_var.get())),
+            "--learning_rate", str(float(self.train_lr_var.get())),
+            "--augment_level", self.train_augment_var.get(),
+            "--save_dir", self.train_save_dir_var.get().strip() or os.path.join(PROJECT_ROOT, "models"),
+            "--log_dir", os.path.join(PROJECT_ROOT, "logs"),
+        ]
+        if self.train_class_weight_var.get():
+            args.append("--class_weight")
+        exp = self.train_exp_name_var.get().strip()
+        if exp:
+            args.extend(["--experiment_name", exp])
+
+        # 数据集参数（二选一，优先 CSV）
+        fer_csv = self.train_fer_csv_var.get().strip()
+        ds_dir = self.train_dataset_dir_var.get().strip()
+        if fer_csv:
+            args.extend(["--fer2013", fer_csv])
+        elif ds_dir:
+            args.extend(["--dataset", ds_dir])
+        else:
+            self._show_error("提示", "请先选择目录数据集或 FER2013 CSV 文件")
+            return
+
+        # 行处理回调：捕获“最终模型已保存至: ...”并自动切换模型路径
+        def on_line(text: str):
+            key = "最终模型已保存至: "
+            if text.startswith(key):
+                new_model = text[len(key):].strip()
+                if os.path.isfile(new_model):
+                    self.model_path_var.set(new_model)
+                    self._log(f"已自动切换模型路径: {new_model}")
+
+        self._run_subprocess(args, "开始训练模型… 训练过程较长，请耐心等待。", "训练结束。", on_line=on_line)
 
 
 def main():
