@@ -4,6 +4,7 @@ numpy>=1.19.0
 matplotlib>=3.3.0
 scikit-learn>=0.24.0
 pillow>=8.0.0
+customtkinter>=5.2.0
 
 # 深度学习框架
 # 注意：请根据您的平台选择合适的TensorFlow版本
